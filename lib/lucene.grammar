@@ -143,9 +143,17 @@ node
     }
 
 group_exp
-  = field_exp:field_exp _*
+  = prefix_field_exp:prefix_field_exp _*
     {
-        return field_exp;
+        return prefix_field_exp;
+    }
+  / prefix_paren_exp
+
+prefix_paren_exp
+  = prefix:prefix_operator_exp _* paren:paren_exp
+    {
+        paren['group_prefix'] = prefix;
+        return paren;
     }
   / paren_exp
 
@@ -155,6 +163,42 @@ paren_exp
         node[0]['parenthesized'] = true;
         return node[0];
     }
+
+prefix_field_exp
+  = prefix:prefix_operator_exp _* fieldname:fieldname? range:range_operator_exp
+    {
+        range['field'] =
+            fieldname == '' || fieldname == null
+                ? "<implicit>"
+                : fieldname;
+        range['group_prefix'] = prefix;
+
+        return range;
+    }
+  / prefix:prefix_operator_exp _* fieldname:fieldname node:paren_exp
+    {
+        node['field']= fieldname;
+        node['group_prefix']= prefix;
+        return node;
+    }
+  / prefix:prefix_operator_exp _* fieldname:fieldname term:term
+    {
+        var fieldexp = {
+            'field':
+                fieldname == '' || fieldname == null
+                    ? "<implicit>"
+                    : fieldname
+            };
+
+        for(var key in term)
+            fieldexp[key] = term[key];
+
+        fieldexp['group_prefix'] = prefix;
+
+        return fieldexp;
+    }
+   / field_exp
+
 
 field_exp
 
